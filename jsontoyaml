@@ -1,3 +1,38 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- script: |
+    expirationDates=$(cat white.yaml | jq -r '.vulnerabilities | to_entries[].value[].expirationDate' || echo "[]")
+
+    for expirationDate in $expirationDates; do
+      expirationDateEpoch=$(date -d "$expirationDate" +%s 2>/dev/null || echo "invalid_date")
+      
+      if [ "$expirationDateEpoch" = "invalid_date" ]; then
+        echo "Error: Invalid date format in expirationDate: $expirationDate"
+        exit 1
+      fi
+
+      currentDateEpoch=$(date +%s)
+      
+      # Calculate the difference in seconds
+      differenceInSeconds=$((expirationDateEpoch - currentDateEpoch))
+      
+      # Check if the difference is less than 7 days (604800 seconds)
+      if [ $differenceInSeconds -lt 604800 ]; then
+        echo "Error: Expiration date $expirationDate is less than 7 days from today."
+        exit 1
+      fi
+    done
+
+  displayName: 'Check Expiration Dates'
+
+
+
+
 #
 trigger:
 - master
